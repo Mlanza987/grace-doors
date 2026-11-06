@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta charset="utf-8">
+<title>Grace Door Schedule</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: booking form rail on the left, agenda / calendar on the right; stacks on phones. */
+:root{
+  --bg:#f2f4f6; --surface:#ffffff; --ink:#16202a; --muted:#5a6775; --line:#d9e0e6;
+  --accent:#1d5d88; --accent-ink:#ffffff; --open:#2e8b57; --open-soft:#dcefe3;
+  --warn:#a86d12; --warn-soft:#f6ead2; --bad:#b83b2e; --bad-soft:#f7dfdc; --track:#e8edf1;
+  --display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0e141a; --surface:#16202a; --ink:#e4eaf0; --muted:#94a2b0; --line:#273340;
+  --accent:#6aaedb; --accent-ink:#0e141a; --open:#4cc38a; --open-soft:#173a2a;
+  --warn:#e2a94b; --warn-soft:#3a2e17; --bad:#ef6f62; --bad-soft:#3f1f1c; --track:#1e2934; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--body)}
+.wrap{max-width:1180px;margin:0 auto;padding:20px max(16px,env(safe-area-inset-right,0px)) 48px max(16px,env(safe-area-inset-left,0px))}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:20px}
+h1{font:700 2rem/1 var(--display);letter-spacing:.01em;margin:0}
+.sub{color:var(--muted);font-size:.95rem;margin-top:4px}
+.sync{font-size:.88rem;color:var(--muted);text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}.sync{align-items:flex-start;text-align:left}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+h2{font:600 1.15rem/1.2 var(--display);letter-spacing:.02em;text-transform:uppercase;margin:0 0 14px}
+label,.lbl{display:block;font-size:.8rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.field{margin-bottom:14px}
+input[type=text],input[type=date],input[type=time],select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+textarea{min-height:60px;resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.doors{display:flex;gap:8px;flex-wrap:wrap}
+.doors label{display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-size:.95rem;color:var(--ink);font-weight:600;border:1px solid var(--line);border-radius:6px;padding:7px 10px;margin:0;cursor:pointer;background:var(--bg)}
+.win{display:grid;grid-template-columns:1fr auto 1fr auto;gap:6px;align-items:center;margin-bottom:6px}
+.win span{color:var(--muted);font-size:.85rem}
+button{font:600 .95rem var(--body);border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 12px;cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);width:100%;padding:10px}
+button.ghost{border-color:transparent;background:transparent;color:var(--muted);padding:6px 8px}
+button.link{border:0;background:none;color:var(--accent);padding:4px 0}
+button:disabled{opacity:.5;cursor:not-allowed}
+.x{width:32px;height:34px;padding:0;color:var(--muted)}
+.err{color:var(--bad);font-size:.9rem;margin:8px 0 0}
+.ok{color:var(--open);font-size:.9rem;margin:8px 0 0}
+.hint{color:var(--muted);font-size:.85rem;margin:10px 0 0}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.tog{display:flex;gap:4px;background:var(--track);border-radius:7px;padding:3px}
+.tog button{border:0;background:transparent;padding:5px 10px;font-size:.88rem}
+.tog button[aria-pressed=true]{background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.day{margin-bottom:18px}
+.dayhead{display:flex;align-items:baseline;gap:10px;font:600 1.05rem var(--display);letter-spacing:.02em;text-transform:uppercase;padding:0 2px 6px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.dayhead small{font:400 .85rem var(--body);color:var(--muted);text-transform:none;letter-spacing:0}
+.bk{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px}
+.bk h3{margin:0;font-size:1.02rem;font-weight:600;min-width:0;overflow-wrap:anywhere}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;grid-column:1/-1}
+.chip{font-size:.78rem;font-weight:600;border-radius:4px;padding:2px 7px;background:var(--track);color:var(--ink)}
+.pill{font-size:.78rem;font-weight:600;border-radius:999px;padding:3px 9px;white-space:nowrap;justify-self:end;align-self:start}
+.s-live{background:var(--open-soft);color:var(--open)}
+.s-error{background:var(--bad-soft);color:var(--bad)}
+.s-rhombus{background:var(--track);color:var(--muted)}
+.times{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;font:500 .85rem var(--mono);font-variant-numeric:tabular-nums}
+.times span{border:1px solid var(--open);color:var(--open);border-radius:4px;padding:1px 6px}
+.times .dur{font-style:normal;color:var(--muted);align-self:center;padding-left:2px}
+.strip{grid-column:1/-1;position:relative;height:14px;background:var(--track);border-radius:3px;overflow:hidden}
+.strip i{position:absolute;top:0;bottom:0;background:var(--open);border-radius:2px}
+.strip b{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.scale{grid-column:1/-1;display:flex;justify-content:space-between;font:500 .7rem var(--mono);color:var(--muted);margin-top:-2px}
+.meta{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:.86rem;color:var(--muted)}
+.meta .note{min-width:0;overflow-wrap:anywhere}
+.msg{grid-column:1/-1;font-size:.86rem;color:var(--bad)}
+.empty{border:1px dashed var(--line);border-radius:10px;padding:28px 18px;text-align:center;color:var(--muted)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;color:var(--muted);margin-top:16px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:2px;display:inline-block}
+.calhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.calhead h3{margin:0;font:600 1.25rem var(--display);letter-spacing:.02em;text-transform:uppercase}
+.calnav{display:flex;gap:4px}
+.calnav button{padding:5px 10px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.cal .wd{background:var(--track);font:600 .72rem var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px;text-align:center}
+.cal .cell{background:var(--surface);min-height:96px;padding:5px;display:flex;flex-direction:column;gap:3px;text-align:left;border:0;border-radius:0;font:inherit;color:inherit;cursor:pointer;min-width:0}
+.cal .cell.out{background:var(--bg);color:var(--muted)}
+.cal .cell[aria-pressed=true]{box-shadow:inset 0 0 0 2px var(--accent)}
+.cal .n{font:600 .85rem var(--mono)}
+.cal .cell.today .n{background:var(--accent);color:var(--accent-ink);border-radius:4px;padding:0 5px;align-self:flex-start}
+.ev{display:block;font-size:.75rem;line-height:1.25;border-left:3px solid var(--muted);padding:1px 4px;background:var(--track);border-radius:0 3px 3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev.s-live{border-color:var(--open);background:var(--track);color:var(--ink)} .ev.s-error{border-color:var(--bad);background:var(--track);color:var(--bad)} .ev.s-rhombus{background:var(--track)}
+.ev time{font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-right:3px}
+.more{font-size:.72rem;color:var(--muted);padding-left:4px}
+.dots{display:none;gap:3px;flex-wrap:wrap}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.dots i.s-live{background:var(--open)} .dots i.s-error{background:var(--bad)}
+@media (max-width:640px){.cal .cell{min-height:54px}.cal .ev,.cal .more{display:none}.dots{display:flex}}
+.daypanel{margin-top:16px}
+.gate[hidden]{display:none}
+.gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.gate form{width:100%;max-width:340px}
+.gate h1{font-size:1.7rem;margin-bottom:6px}
+.gate .sub{margin-bottom:18px}
+.pin{font:500 1.6rem var(--mono)!important;letter-spacing:.4em;text-align:center}
+.chk{display:flex!important;align-items:center;gap:8px;text-transform:none!important;letter-spacing:0!important;font-size:.95rem!important;color:var(--ink)!important;font-weight:400!important;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="gate" id="gate">
+  <form class="panel" id="gateForm" novalidate>
+    <h1>Grace Door Schedule</h1>
+    <div class="sub">Enter the door PIN to continue.</div>
+    <div class="field">
+      <label for="g-name">Your name</label>
+      <input type="text" id="g-name" maxlength="40" autocomplete="name" placeholder="Shows in the change log">
+    </div>
+    <div class="field">
+      <label for="g-pin">PIN</label>
+      <input type="password" id="g-pin" class="pin" inputmode="numeric" autocomplete="off" maxlength="12">
+    </div>
+    <div class="field"><label class="chk"><input type="checkbox" id="g-remember" checked> Remember on this device</label></div>
+    <button type="submit" class="primary" id="g-btn">Open schedule</button>
+    <p class="err" id="g-err" hidden></p>
+  </form>
+</div>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Grace Door Schedule</h1>
+      <div class="sub">Renter and event unlock windows for the Gym Door and Main Entrance. Times are Eastern.</div>
+    </div>
+    <div class="sync"><span id="who"></span><span id="syncInfo">Loading…</span><button type="button" class="link" id="refreshBtn">Refresh from Rhombus</button><button type="button" class="link" id="lockBtn">Lock this device</button></div>
+  </header>
+
+  <div class="grid">
+    <form class="panel" id="form" novalidate>
+      <h2>New booking</h2>
+      <div class="field">
+        <label for="f-title">Renter or event</label>
+        <input type="text" id="f-title" placeholder="e.g. Shockwave VB Club – Cindy Arters" maxlength="100" required>
+      </div>
+      <div class="field">
+        <span class="lbl">Doors to unlock</span>
+        <div class="doors">
+          <label><input type="checkbox" id="f-gym" checked> Gym Door</label>
+          <label><input type="checkbox" id="f-main"> Main Entrance</label>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-date">Date</label>
+        <input type="date" id="f-date" required>
+      </div>
+      <div class="field">
+        <label for="f-repeat">Repeat</label>
+        <select id="f-repeat">
+          <option value="1">Just this date</option>
+          <option value="2">Weekly, 2 weeks</option>
+          <option value="4">Weekly, 4 weeks</option>
+          <option value="6">Weekly, 6 weeks</option>
+          <option value="8">Weekly, 8 weeks</option>
+          <option value="12">Weekly, 12 weeks</option>
+        </select>
+      </div>
+      <div class="field">
+        <span class="lbl">Unlocked from / until</span>
+        <div id="wins"></div>
+        <button type="button" class="link" id="addWin">+ Add another window that day</button>
+      </div>
+      <div class="field">
+        <label for="f-notes">Notes (optional)</label>
+        <textarea id="f-notes" maxlength="400" placeholder="Contact, room, who locks up…"></textarea>
+      </div>
+      <button type="submit" class="primary" id="submitBtn">Add and send to Rhombus</button>
+      <p class="err" id="formErr" hidden></p>
+      <p class="ok" id="formOk" hidden></p>
+      <p class="hint">Bookings go to Rhombus the moment you save. The door then unlocks and locks on its own at those times.</p>
+    </form>
+
+    <section>
+      <div class="bar">
+        <div class="tog" role="group" aria-label="Which bookings">
+          <button type="button" id="t-up" aria-pressed="true">Upcoming</button>
+          <button type="button" id="t-past" aria-pressed="false">Past</button>
+          <button type="button" id="t-cal" aria-pressed="false">Calendar</button>
+        </div>
+      </div>
+      <div id="list"><div class="empty">Loading the schedule…</div></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--open)"></i>Unlocked window (6 AM – midnight shown)</span>
+        <span><i class="sw" style="background:var(--track);border:1px solid var(--line)"></i>Normal badge access</span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const DOORS = {gym:"Gym Door", main:"Main Entrance"};
+  const DAY_START = 6*60, DAY_END = 24*60;
+  let rows = [], today = "", view = "up", calY, calM, selDay = null;
+
+  function el(tag, attrs, ...kids){
+    const n = document.createElement(tag);
+    if (attrs) for (const k in attrs){ if (k==="class") n.className = attrs[k]; else if (k==="text") n.textContent = attrs[k]; else n.setAttribute(k, attrs[k]); }
+    for (const c of kids) if (c!=null) n.append(c);
+    return n;
+  }
+  const localToday = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+  const toMin = t => { const [h,m] = t.split(":").map(Number); return h*60+m; };
+  function fmt(t){ let [h,m] = t.split(":").map(Number); const ap = h>=12?"PM":"AM"; h = h%12||12; return h+(m?":"+String(m).padStart(2,"0"):"")+" "+ap; }
+  function fmtShort(t){ let [h,m] = t.split(":").map(Number); const ap = h>=12?"p":"a"; h = h%12||12; return h+(m?":"+String(m).padStart(2,"0"):"")+ap; }
+  function addDays(s, n){ const [y,m,d] = s.split("-").map(Number); const dt = new Date(y,m-1,d+n); return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
+  function dayLabel(s){ const [y,m,d] = s.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}); }
+  function rel(s){ if (s===today) return "Today"; if (s===addDays(today,1)) return "Tomorrow"; return ""; }
+  const ymd = (y,m,d) => y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+  function statusOf(r){ if (r.status==="error") return ["Problem","s-error"]; if (r.source==="rhombus") return ["Entered in Rhombus","s-rhombus"]; return ["Live in Rhombus","s-live"]; }
+  function errText(e){ return (e && e.message ? e.message : String(e)).replace(/^(Error|Exception):\s*/,"").replace(/^PIN_(BAD|LOCKED):\s*/,""); }
+
+  // ---- PIN gate ----
+  // The PIN rides along on every server call; the server checks it each time.
+  let cred = null;
+  try { const s = JSON.parse(localStorage.getItem("doorCred")||"null"); if (s && s.pin && s.name) cred = s; } catch(e){}
+  try { $("g-name").value = (cred && cred.name) || localStorage.getItem("doorName") || ""; } catch(e){}
+  function isPinErr(e){ return /PIN_(BAD|LOCKED)/.test(e && e.message ? e.message : String(e)); }
+  function forget(){ cred = null; try { localStorage.removeItem("doorCred"); } catch(e){} }
+  function showGate(msg){
+    $("gate").hidden = false; $("g-pin").value = "";
+    $("g-err").textContent = msg||""; $("g-err").hidden = !msg;
+    ($("g-name").value ? $("g-pin") : $("g-name")).focus();
+  }
+  // Every call sends cred first and bounces to the gate on a PIN error.
+  const API = "https://script.google.com/macros/s/AKfycbxA5m_o1zIl9bBtMwUn3Wq2ool7K9_sj-rLz0fzJAnO5uj5zlqNgwlUJpNO-a_xaq3M/exec";
+  // POST to the Apps Script JSON API. text/plain avoids a CORS preflight and
+  // credentials:"omit" keeps Google sign-in cookies out of it entirely.
+  async function rpc(fn, c, args){
+    let res;
+    try {
+      res = await fetch(API, {method:"POST", credentials:"omit", redirect:"follow",
+        headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({fn, cred:c, args})});
+    } catch(e){ throw new Error("Can't reach the server. Check your internet connection."); }
+    let data;
+    try { data = await res.json(); } catch(e){ throw new Error("The server sent an unexpected reply (HTTP "+res.status+")."); }
+    if (!data.ok) throw new Error(data.error || "Something went wrong.");
+    return data.result;
+  }
+  function call(fn, args, ok, fail){
+    if (!cred){ showGate(); return; }
+    rpc(fn, cred, args).then(ok, e => { if (isPinErr(e)){ forget(); showGate(errText(e)); } else if (fail) fail(e); });
+  }
+  $("gateForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const name = $("g-name").value.trim(), pin = $("g-pin").value.trim();
+    if (!name){ $("g-err").textContent = "Add your name."; $("g-err").hidden = false; return; }
+    if (!pin){ $("g-err").textContent = "Enter the PIN."; $("g-err").hidden = false; return; }
+    $("g-btn").disabled = true; $("g-err").hidden = true;
+    rpc("checkPin", {name, pin}, []).then(() => {
+        cred = {name, pin};
+        try { localStorage.setItem("doorName", name); if ($("g-remember").checked) localStorage.setItem("doorCred", JSON.stringify(cred)); else localStorage.removeItem("doorCred"); } catch(e){}
+        $("g-btn").disabled = false; $("gate").hidden = true; load();
+      }, err => { $("g-btn").disabled = false; $("g-pin").value = ""; $("g-err").textContent = errText(err); $("g-err").hidden = false; });
+  });
+  $("lockBtn").onclick = () => { forget(); rows = []; render(); showGate(); };
+
+  // ---- form ----
+  function addWin(start, end){
+    const row = el("div",{class:"win"});
+    const a = el("input",{type:"time",value:start||"18:00","aria-label":"Unlock at"});
+    const b = el("input",{type:"time",value:end||"20:00","aria-label":"Lock at"});
+    const x = el("button",{type:"button",class:"x","aria-label":"Remove window",text:"×"});
+    x.onclick = () => { if ($("wins").children.length>1) row.remove(); };
+    row.append(a, el("span",{text:"to"}), b, x);
+    $("wins").append(row);
+  }
+  addWin("18:00","20:00");
+  $("addWin").onclick = () => addWin("", "");
+  $("f-date").value = localToday();
+
+  $("form").addEventListener("submit", e => {
+    e.preventDefault();
+    $("formErr").hidden = true; $("formOk").hidden = true;
+    const form = {
+      title: $("f-title").value.trim(),
+      doors: [$("f-gym").checked&&"gym", $("f-main").checked&&"main"].filter(Boolean),
+      date: $("f-date").value, weeks: Number($("f-repeat").value),
+      windows: [...$("wins").children].map(r => { const [a,b] = r.querySelectorAll("input"); return {start:a.value, end:b.value}; }),
+      notes: $("f-notes").value.trim()
+    };
+    $("submitBtn").disabled = true; $("submitBtn").textContent = "Sending to Rhombus…";
+    call("addBooking", [form],
+      res => {
+        const bad = res.filter(r => r.status!=="live");
+        if (bad.length){ $("formErr").textContent = bad.length+" of "+res.length+" date(s) failed: "+bad[0].msg; $("formErr").hidden = false; }
+        const good = res.length - bad.length;
+        if (good){ $("formOk").textContent = good===1 ? "Saved and live in Rhombus." : good+" weekly dates saved and live in Rhombus."; $("formOk").hidden = false; $("f-title").value = ""; $("f-notes").value = ""; }
+        done(); load();
+      },
+      err => { $("formErr").textContent = errText(err); $("formErr").hidden = false; done(); });
+    if (!cred) done();
+    function done(){ $("submitBtn").disabled = false; $("submitBtn").textContent = "Add and send to Rhombus"; }
+  });
+
+  // ---- views ----
+  try { const v = localStorage.getItem("doorView"); if (v==="up"||v==="past"||v==="cal") view = v; } catch(e){}
+  function setView(v){
+    view = v;
+    for (const [k,id] of [["up","t-up"],["past","t-past"],["cal","t-cal"]]) $(id).setAttribute("aria-pressed", String(k===v));
+    try { localStorage.setItem("doorView", v); } catch(e){}
+    render();
+  }
+  $("t-up").onclick = () => setView("up");
+  $("t-past").onclick = () => setView("past");
+  $("t-cal").onclick = () => setView("cal");
+  for (const [k,id] of [["up","t-up"],["past","t-past"],["cal","t-cal"]]) $(id).setAttribute("aria-pressed", String(k===view));
+  { const d = new Date(); calY = d.getFullYear(); calM = d.getMonth(); }
+
+  function strip(windows){
+    const s = el("div",{class:"strip","aria-hidden":"true"});
+    for (const h of [9,12,15,18,21]) { const b = el("b"); b.style.left = ((h*60-DAY_START)/(DAY_END-DAY_START)*100)+"%"; s.append(b); }
+    for (const w of windows){
+      const a = Math.max(DAY_START, toMin(w.start)), z = Math.min(DAY_END, toMin(w.end));
+      if (z<=a) continue;
+      const i = el("i"); i.style.left = ((a-DAY_START)/(DAY_END-DAY_START)*100)+"%"; i.style.width = ((z-a)/(DAY_END-DAY_START)*100)+"%";
+      s.append(i);
+    }
+    return s;
+  }
+
+  function card(r){
+    const st = statusOf(r);
+    const c = el("article",{class:"bk"});
+    c.append(el("h3",{text:r.title||"Untitled"}), el("span",{class:"pill "+st[1],text:st[0]}));
+    const chips = el("div",{class:"chips"});
+    for (const d of (r.doors||[])) chips.append(el("span",{class:"chip",text:DOORS[d]||d}));
+    c.append(chips);
+    const wins = r.windows||[];
+    if (wins.length){
+      const t = el("div",{class:"times"});
+      for (const w of wins) t.append(el("span",{text:fmt(w.start)+" – "+fmt(w.end)}));
+      const mins = wins.reduce((s,w)=>s+Math.max(0,toMin(w.end)-toMin(w.start)),0), hh = Math.floor(mins/60), mm = mins%60;
+      t.append(el("em",{class:"dur",text:(hh?hh+" hr":"")+(hh&&mm?" ":"")+(mm?mm+" min":"")+" open"}));
+      c.append(t, strip(wins), el("div",{class:"scale"}, ...["6a","9a","12p","3p","6p","9p","12a"].map(x=>el("span",{text:x}))));
+    }
+    if (r.status==="error" && r.syncMsg) c.append(el("div",{class:"msg",text:r.syncMsg}));
+    const m = el("div",{class:"meta"});
+    m.append(el("span",{class:"note",text:[r.notes, r.createdBy ? "Added by "+r.createdBy : ""].filter(Boolean).join(" · ")}));
+    if (r.source==="board" && r.date>=today){
+      const btn = el("button",{type:"button",class:"ghost",text:"Cancel booking"});
+      let armed = false;
+      btn.onclick = () => {
+        if (!armed){ armed = true; btn.textContent = "Tap again to cancel"; btn.style.color = "var(--bad)"; setTimeout(()=>{ if(armed){ armed=false; btn.textContent="Cancel booking"; btn.style.color=""; } }, 4000); return; }
+        armed = false; btn.disabled = true; btn.textContent = "Removing from Rhombus…";
+        call("cancelBooking", [r.id], load, e => { btn.disabled=false; btn.textContent = errText(e); });
+      };
+      m.append(btn);
+    }
+    c.append(m);
+    return c;
+  }
+
+  function render(){
+    const list = $("list"); list.textContent = "";
+    if (view==="cal") return renderCal(list);
+    const past = view==="past";
+    const vis = rows.filter(r => past ? r.date < today : r.date >= today)
+      .sort((a,b) => past ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date) || ((a.windows[0]||{}).start||"").localeCompare((b.windows[0]||{}).start||""));
+    if (!vis.length){ list.append(el("div",{class:"empty",text: past ? "No past bookings." : "Nothing scheduled. Add the first booking with the form."})); return; }
+    let cur = null, box = null;
+    for (const r of vis){
+      if (r.date!==cur){
+        cur = r.date; box = el("div",{class:"day"});
+        const h = el("div",{class:"dayhead"}, document.createTextNode(dayLabel(cur)));
+        const rl = rel(cur); if (rl) h.append(el("small",{text:rl}));
+        box.append(h); list.append(box);
+      }
+      box.append(card(r));
+    }
+  }
+
+  function renderCal(list){
+    const byDay = {};
+    for (const r of rows) (byDay[r.date] = byDay[r.date] || []).push(r);
+    for (const k in byDay) byDay[k].sort((a,b) => ((a.windows[0]||{}).start||"99").localeCompare((b.windows[0]||{}).start||"99"));
+    const head = el("div",{class:"calhead"});
+    head.append(el("h3",{text:new Date(calY,calM,1).toLocaleDateString(undefined,{month:"long",year:"numeric"})}));
+    const nav = el("div",{class:"calnav"});
+    const prev = el("button",{type:"button","aria-label":"Previous month",text:"‹"});
+    const tb = el("button",{type:"button",text:"Today"});
+    const next = el("button",{type:"button","aria-label":"Next month",text:"›"});
+    prev.onclick = () => { calM--; if (calM<0){calM=11;calY--;} selDay=null; render(); };
+    next.onclick = () => { calM++; if (calM>11){calM=0;calY++;} selDay=null; render(); };
+    tb.onclick = () => { const d = new Date(); calY=d.getFullYear(); calM=d.getMonth(); selDay=today; render(); };
+    nav.append(prev,tb,next); head.append(nav); list.append(head);
+
+    const grid = el("div",{class:"cal"});
+    for (const w of ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]) grid.append(el("div",{class:"wd",text:w}));
+    const startOffset = new Date(calY,calM,1).getDay(), daysIn = new Date(calY,calM+1,0).getDate();
+    const total = Math.ceil((startOffset+daysIn)/7)*7, monthKey = ymd(calY,calM,1).slice(0,7);
+    if (!selDay || selDay.slice(0,7)!==monthKey) selDay = today.slice(0,7)===monthKey ? today : null;
+    for (let i=0;i<total;i++){
+      const dt = new Date(calY,calM,1-startOffset+i);
+      const key = ymd(dt.getFullYear(),dt.getMonth(),dt.getDate()), inMonth = dt.getMonth()===calM;
+      const items = byDay[key]||[];
+      const cell = el("button",{type:"button",class:"cell"+(inMonth?"":" out")+(key===today?" today":""),"aria-pressed":String(key===selDay),"aria-label":dayLabel(key)+(items.length?", "+items.length+" booking"+(items.length>1?"s":""):"")});
+      cell.append(el("span",{class:"n",text:String(dt.getDate())}));
+      items.slice(0,3).forEach(r => {
+        const ev = el("span",{class:"ev "+statusOf(r)[1]});
+        if (r.windows[0]) ev.append(el("time",{text:fmtShort(r.windows[0].start)}));
+        ev.append(document.createTextNode(r.title||"Untitled"));
+        cell.append(ev);
+      });
+      if (items.length>3) cell.append(el("span",{class:"more",text:"+"+(items.length-3)+" more"}));
+      if (items.length){ const dots = el("span",{class:"dots"}); items.forEach(r => dots.append(el("i",{class:statusOf(r)[1]}))); cell.append(dots); }
+      cell.onclick = () => { selDay = key; if (!inMonth){ calY=dt.getFullYear(); calM=dt.getMonth(); } render(); };
+      grid.append(cell);
+    }
+    const sc = el("div",{style:"overflow-x:auto"}); sc.append(grid); list.append(sc);
+
+    const panel = el("div",{class:"daypanel"});
+    if (selDay){
+      const h = el("div",{class:"dayhead"}, document.createTextNode(dayLabel(selDay)));
+      const rl = rel(selDay); if (rl) h.append(el("small",{text:rl}));
+      panel.append(h);
+      const items = byDay[selDay]||[];
+      if (!items.length){
+        const e = el("div",{class:"empty",text:"Nothing booked this day. "});
+        if (selDay>=today){ const b = el("button",{type:"button",class:"link",text:"Book this date"}); b.onclick = () => { $("f-date").value = selDay; $("f-title").focus(); $("form").scrollIntoView({behavior:"smooth"}); }; e.append(b); }
+        panel.append(e);
+      } else items.forEach(r => panel.append(card(r)));
+    } else panel.append(el("div",{class:"empty",text:"Pick a day to see its bookings."}));
+    list.append(panel);
+  }
+
+  // ---- data ----
+  function apply(data){
+    rows = data.rows; today = data.today;
+    $("who").textContent = "Using as "+data.me;
+    $("syncInfo").textContent = data.lastRefresh ? "Checked Rhombus "+new Date(data.lastRefresh).toLocaleString(undefined,{weekday:"short",hour:"numeric",minute:"2-digit"}) : "";
+    render();
+  }
+  function load(){
+    if (!cred) return showGate();
+    call("getBoard", [], apply,
+      e => { $("list").textContent=""; $("list").append(el("div",{class:"empty",text:"Couldn't load the schedule: "+errText(e)})); });
+  }
+  $("refreshBtn").onclick = () => {
+    $("refreshBtn").disabled = true; $("refreshBtn").textContent = "Refreshing…";
+    const reset = () => { $("refreshBtn").disabled=false; $("refreshBtn").textContent="Refresh from Rhombus"; };
+    call("refreshNow", [], d => { apply(d); reset(); },
+      e => { $("refreshBtn").disabled=false; $("refreshBtn").textContent="Refresh failed: "+errText(e); });
+    if (!cred) reset();
+  };
+  if (cred) { $("gate").hidden = true; load(); } else showGate();
+})();
+</script>
+</body>
+</html>
